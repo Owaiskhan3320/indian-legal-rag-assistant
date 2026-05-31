@@ -1,0 +1,72 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+*.token
+
+# Python
+.venv/
+.venv_broken/
+venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Large local artifacts
+artifacts/
+data/
+reports/
+temp/
+
+# Vector stores, databases, embeddings, and model weights
+*.faiss
+*.sqlite
+*.sqlite3
+*.db
+*.npy
+*.npz
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.gguf
+
+# Documents and uploaded files
+uploads/
+*.pdf
+*.docx
+*.doc
+*.xlsx
+*.csv
+
+# Keep repository documentation assets if explicitly placed there
+!docs/**/*.pdf
+!docs/**/*.docx
+!screenshots/**/*.png
+!screenshots/**/*.jpg
+!screenshots/**/*.jpeg
+!screenshots/**/*.webp
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Docker/runtime
+*.log
+docker-compose.override.yml
+
+# Cloudflare tunnel credentials
+.cloudflared/
+cert.pem
+*.cfargotunnel.com.json

@@ -1,0 +1,55 @@
+services:
+  nyaya-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nyaya-api
+    command: uvicorn legal_ai.api.app:create_app --factory --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONPATH: /app/src
+      HF_HOME: /cache/huggingface
+      TRANSFORMERS_CACHE: /cache/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /cache/sentence-transformers
+      # If LM Studio/Ollama runs on your Windows host, containers should call the host through host.docker.internal.
+      LLM_BASE_URL: http://host.docker.internal:1234/v1
+      LLM_MODEL: auto
+    volumes:
+      # Keep large FAISS/SQLite indexes outside the image and mount them read-only.
+      - ./artifacts:/app/artifacts:ro
+      # Temporary upload/session workspace.
+      - ./temp:/app/temp
+      # Reuse downloaded Hugging Face models between container restarts.
+      - hf_cache:/cache/huggingface
+      - sentence_transformers_cache:/cache/sentence-transformers
+    restart: unless-stopped
+
+  nyaya-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nyaya-web
+    depends_on:
+      - nyaya-api
+    ports:
+      - "8501:8501"
+    environment:
+      PYTHONPATH: /app/src
+      STREAMLIT_API_URL: http://nyaya-api:8000
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+      HF_HOME: /cache/huggingface
+      TRANSFORMERS_CACHE: /cache/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /cache/sentence-transformers
+    volumes:
+      # Temporary upload/session workspace.
+      - ./temp:/app/temp
+      # Reuse downloaded Hugging Face models between container restarts.
+      - hf_cache:/cache/huggingface
+      - sentence_transformers_cache:/cache/sentence-transformers
+    restart: unless-stopped
+
+volumes:
+  hf_cache:
+  sentence_transformers_cache:
