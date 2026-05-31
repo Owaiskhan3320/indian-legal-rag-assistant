@@ -195,6 +195,3 @@ This system provides legal information and research support. It does not provide
 - Docker Compose
 - Cloudflare Tunnel
 
-## Resume-Friendly Summary
-
-Built and deployed an end-to-end Indian legal RAG system with statute-first routing, case-law retrieval, uploaded-document Q/A, judgment prediction, benchmark evaluation, Docker Compose deployment, and Cloudflare Tunnel live demo support.
