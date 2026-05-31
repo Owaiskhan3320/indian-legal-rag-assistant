@@ -58,7 +58,6 @@ GitHub repository
   + README
   + architecture docs
   + evaluation docs
-  + screenshots
   + demo video
   + Docker setup
   + Cloudflare live demo on request

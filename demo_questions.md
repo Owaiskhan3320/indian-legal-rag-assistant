@@ -1,6 +1,6 @@
 # Demo Questions
 
-Use one question per screenshot or demo segment.
+Use one question per demo segment.
 
 ## 1. Statute-First Constitutional Question
 
