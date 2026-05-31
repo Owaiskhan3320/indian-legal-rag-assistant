@@ -76,21 +76,6 @@ The results show moderate judgment-prediction performance and modest retrieval p
 
 More details are available in [docs/evaluation.md](docs/evaluation.md).
 
-## Demo
-
-Recommended demo questions are listed in [demo_questions.md](demo_questions.md).
-
-Suggested screenshots:
-
-- System status: API connected and corpus indexed.
-- Statute-first answer for Article 21 or Article 300A.
-- Consumer remedy question.
-- Similar-case retrieval.
-- Case explanation.
-- Uploaded-document Q/A.
-
-Temporary live demo links are created using Cloudflare Tunnel when the local Docker deployment is running.
-
 ## Local Setup
 
 Create a `.env` file from `.env.example` and ensure local artifacts are available in `artifacts/`.
