@@ -3193,7 +3193,7 @@ class LegalAIPipeline:
                 "#### Why it applies\n"
                 "- The facts involve personal documents being shared with third parties without consent.\n\n"
                 "#### Next step\n"
-                "- Preserve screenshots, privacy-policy text, consent records, emails, and the job portal complaint history before escalating.\n\n"
+                "- Preserve supporting records, privacy-policy text, consent records, emails, and the job portal complaint history before escalating.\n\n"
                 "#### Caution\n"
                 "- Verify the current data-protection and IT-law position before relying on this. The system should not answer this from consumer judgments alone."
             ),

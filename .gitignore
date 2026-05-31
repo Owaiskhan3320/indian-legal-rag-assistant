@@ -51,10 +51,6 @@ uploads/
 # Keep repository documentation assets if explicitly placed there
 !docs/**/*.pdf
 !docs/**/*.docx
-!screenshots/**/*.png
-!screenshots/**/*.jpg
-!screenshots/**/*.jpeg
-!screenshots/**/*.webp
 
 # OS/editor files
 .DS_Store
