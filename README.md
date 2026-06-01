@@ -1,8 +1,12 @@
 # Nyaya Case Insight
 
-Nyaya Case Insight is an end-to-end Indian legal RAG project that routes legal questions to the right kind of source before generating an answer. The system separates official reference law, case-law retrieval, and uploaded-document question answering instead of treating all legal text as one mixed corpus.
+## About
 
-The project is built as an end-to-end legal AI research prototype: it includes retrieval, classification, structured answer generation, benchmark evaluation, Docker deployment, and Cloudflare Tunnel support for live demos. It is a legal information and research-assistance prototype, not a legal-advice product.
+Nyaya Case Insight is an Indian legal RAG project built to answer legal-information questions with clearer source control. Instead of sending every question to one mixed legal corpus, it separates three evidence lanes: official reference law, Indian case law, and user-uploaded documents.
+
+The project combines a FastAPI backend, Streamlit interface, FAISS/SQLite retrieval, a judgment-prediction triage component, benchmark evaluation, Docker deployment, and a small public demo mode. The full local setup uses larger legal indexes that are not redistributed; the GitHub version includes sample data so the workflow can still be run and reviewed.
+
+This is a research and portfolio prototype, not a legal-advice product.
 
 ## Why This Project Exists
 
@@ -10,7 +14,7 @@ Legal questions are source-sensitive. A user asking about a time limit, remedy, 
 
 General-purpose LLM answers often blur these boundaries. They may sound fluent while relying on the wrong source type. This project addresses that problem through a source-routed Retrieval-Augmented Generation architecture.
 
-## What The System Does
+## What the System Does
 
 - Routes legal questions to reference law, case law, uploaded documents, or a hybrid path.
 - Retrieves official legal provisions for statute-first questions.
@@ -66,7 +70,7 @@ Evidence Pack
 Answer Generation + Citation/Caution Layer
 ```
 
-The routing layer is the main design choice. It prevents the system from answering a statutory question using unrelated cases, or a document-specific question using general legal material only.
+The routing layer is the main design choice. It helps keep statutory questions, case-law questions, and document-specific questions grounded in the right type of material.
 
 Detailed architecture notes are in [docs/architecture.md](docs/architecture.md).
 
@@ -84,7 +88,7 @@ Used for structured case intake. The user provides facts, forum, role, relief so
 
 Used when the user uploads a legal document and asks questions about that document. The uploaded file is treated as session-level material and is not added to the permanent corpus.
 
-## Data And Source Acknowledgement
+## Data and Source Acknowledgement
 
 ### Case-Law Data
 
@@ -122,7 +126,7 @@ The project was evaluated as a research artefact across separate benchmark lanes
 | Statute retrieval | IL-PCSR | Recall@10 0.1846; MRR 0.2263; MAP 0.0971 |
 | Precedent retrieval | IL-PCSR | Recall@10 0.3327; MRR 0.2860; MAP 0.1797 |
 
-The results are intentionally reported conservatively. The system shows moderate judgment-prediction performance and modest retrieval performance. The strongest contribution is not leaderboard performance; it is the complete source-routed architecture, benchmark mapping, and deployable legal RAG workflow.
+The results are reported conservatively. They show moderate judgment-prediction performance and modest retrieval performance. The main value of the project is the source-routed architecture, benchmark mapping, and deployable legal RAG workflow rather than leaderboard performance.
 
 Detailed evaluation notes are in [docs/evaluation.md](docs/evaluation.md).
 
@@ -184,7 +188,7 @@ http://127.0.0.1:8501
 
 ## Public Demo Mode
 
-The full local setup uses private/local artifacts that are intentionally not committed to GitHub. For review and portfolio use, the repository includes a small reproducible demo mode.
+The full local setup depends on local artifacts that are intentionally not committed to GitHub. For review and portfolio use, the repository includes a small reproducible demo mode.
 
 Build the public sample store:
 
@@ -314,6 +318,6 @@ The system provides legal information and research support. It does not provide 
 - Shounak Paul, Dhananjay Ghumare, Pawan Goyal, Saptarshi Ghosh, and Ashutosh Modi. 2025. [IL-PCSR: Legal Corpus for Prior Case and Statute Retrieval](https://aclanthology.org/2025.emnlp-main.738/). EMNLP 2025.
 - Government of India. [India Code: Digital Repository of Central and State Acts](https://www.indiacode.nic.in/).
 
-## Portfolio Summary
+## Project Summary
 
-End-to-end Indian legal RAG system with statute-first routing, case-law retrieval, uploaded-document Q/A, judgment prediction, benchmark evaluation, Docker Compose deployment, and Cloudflare Tunnel demo support.
+Indian legal RAG system with statute-first routing, case-law retrieval, uploaded-document Q/A, judgment prediction, benchmark evaluation, Docker Compose deployment, and Cloudflare Tunnel demo support.
