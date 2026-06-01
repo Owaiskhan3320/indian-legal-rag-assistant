@@ -99,6 +99,8 @@ The case-law side of this project uses judgment data and classifier resources re
 
 The judgment-prediction output is not treated as a legal conclusion. It is only a supporting signal inside the broader legal assistance workflow.
 
+NyayaAnumana and INLegalLLaMA dataset resources were used only for research and evaluation purposes. The dataset is not redistributed in this repository and remains governed by the original authors' access terms.
+
 ### Reference-Law Data
 
 The reference-law lane uses locally prepared official legal materials such as statutes, rules, constitutional provisions, codes, and other official legal texts. These files are used to support statute-first retrieval for questions about legal rules, remedies, procedures, timelines, definitions, and constitutional provisions.
