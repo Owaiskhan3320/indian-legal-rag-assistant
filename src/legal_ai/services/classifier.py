@@ -19,6 +19,12 @@ class LegalClassifier:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.demo_mode = bool(settings.demo_mode)
+        if self.demo_mode:
+            LOGGER.info("Using deterministic demo classifier; NyayaAnumana model loading is skipped.")
+            self.tokenizer = None
+            self.model = None
+            return
         LOGGER.info("Loading classifier on device=%s", self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(
             settings.classifier_repo_id,
@@ -41,6 +47,8 @@ class LegalClassifier:
         cleaned = normalize_whitespace(text)
         if not cleaned:
             raise ValueError("Input text must be non-empty.")
+        if self.demo_mode:
+            return self._predict_demo(cleaned)
 
         encoded = self.tokenizer(
             cleaned,
@@ -105,6 +113,53 @@ class LegalClassifier:
             "positive_probability_value": positive_probability,
             "binary_prediction": binary_pred,
             "aggregation_mode": mode,
+        }
+
+    @staticmethod
+    def _predict_demo(cleaned: str) -> dict:
+        lowered = cleaned.lower()
+        label = 1
+        confidence = 0.64
+        probabilities = {"Rejected": 20.0, "Accepted": 64.0, "Partially Accepted": 16.0}
+
+        if any(marker in lowered for marker in ("partial", "inspection only", "limited relief")):
+            label = 2
+            confidence = 0.58
+            probabilities = {"Rejected": 22.0, "Accepted": 20.0, "Partially Accepted": 58.0}
+        elif any(marker in lowered for marker in ("delay explained", "alternative remedy exhausted", "weak evidence")):
+            label = 0
+            confidence = 0.57
+            probabilities = {"Rejected": 57.0, "Accepted": 28.0, "Partially Accepted": 15.0}
+        elif any(
+            marker in lowered
+            for marker in (
+                "no reply",
+                "no response",
+                "not answered",
+                "without hearing",
+                "no show-cause",
+                "defective",
+                "refund",
+                "without authority of law",
+                "without issuing acquisition notice",
+            )
+        ):
+            label = 1
+            confidence = 0.66
+            probabilities = {"Rejected": 18.0, "Accepted": 66.0, "Partially Accepted": 16.0}
+
+        positive_probability = (probabilities["Accepted"] + probabilities["Partially Accepted"]) / 100
+        return {
+            "predicted_label": label,
+            "predicted_name": LABEL_ID_TO_NAME[label],
+            "confidence_score": round(confidence * 100, 2),
+            "confidence_band": LegalClassifier._confidence_band(confidence),
+            "probabilities": probabilities,
+            "chunk_count": 1,
+            "positive_probability": round(positive_probability * 100, 2),
+            "positive_probability_value": positive_probability,
+            "binary_prediction": 1 if label in {1, 2} else 0,
+            "aggregation_mode": "demo_keyword_rules",
         }
 
     @staticmethod

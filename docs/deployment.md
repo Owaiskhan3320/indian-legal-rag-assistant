@@ -16,6 +16,17 @@ cd C:\Project
 docker compose up -d --build
 ```
 
+For a clone that does not include the full local indexes, use public demo mode first:
+
+```powershell
+cd C:\Project
+$env:DEMO_MODE="true"
+docker compose --profile demo run --rm nyaya-demo-builder
+docker compose up -d --build
+```
+
+Demo mode builds and loads only `artifacts/demo/`. It does not modify the full judgment vector DB or the full reference-law indexes.
+
 Open:
 
 ```text
@@ -58,7 +69,7 @@ GitHub repository
   + README
   + architecture docs
   + evaluation docs
-  + demo video
+  + public demo mode
   + Docker setup
   + Cloudflare live demo on request
 ```

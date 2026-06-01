@@ -771,6 +771,11 @@ class LegalAIPipeline:
                     ),
                     "source": "retrieval_summary",
                 }
+            elif self.settings.demo_mode and question_profile.task == "case_explanation" and similar_cases:
+                answer_result = {
+                    "text": self._build_demo_case_explanation_answer(similar_cases[0]),
+                    "source": "demo_case_summary",
+                }
             else:
                 llm_answer_result = self.explainer.answer_question(
                     question=question,
@@ -3156,13 +3161,13 @@ class LegalAIPipeline:
             ),
             "rti_section_8_1_j": (
                 "#### Answer\n"
-                "- Section 8(1)(j) deals with personal information. Such information may be denied when disclosure has no relationship to any public activity or interest, or would cause an unwarranted invasion of privacy, unless a larger public interest justifies disclosure.\n\n"
+                "- Section 8(1)(j) deals with personal information. In the current statutory text, information which relates to personal information is exempted from disclosure under this clause.\n\n"
                 "#### Source used\n"
                 f"- {lead_label}.\n\n"
                 "#### Why it applies\n"
                 "- The question asks whether a public authority can refuse information as personal information, and Section 8(1)(j) is the direct exemption provision.\n\n"
                 "#### Caution\n"
-                "- Personal-information exemption depends on the facts and any larger public-interest justification."
+                "- Apply this cautiously because RTI disclosure questions can also involve other RTI provisions, later notifications, and facts about whether the requested material is truly personal information."
             ),
             "rti_section_2_j": (
                 "#### Answer\n"
@@ -3534,6 +3539,31 @@ class LegalAIPipeline:
             ]
         )
         return "\n".join(lines)
+
+    @staticmethod
+    def _build_demo_case_explanation_answer(case: dict[str, Any]) -> str:
+        case_id = case.get("case_id") or "demo case"
+        title = case.get("title") or case_id
+        court = case.get("court") or "demo forum"
+        outcome = case.get("label_name") or "demo outcome"
+        excerpt = normalize_whitespace(case.get("summary") or case.get("excerpt") or "")
+        if not excerpt:
+            excerpt = "The selected demo case was retrieved from the sample case-law store."
+        return "\n".join(
+            [
+                "#### Answer",
+                f"- `{case_id}` is a sample case-law record titled **{title}** from {court}.",
+                "",
+                "#### Core point",
+                f"- {excerpt}",
+                "",
+                "#### Outcome signal",
+                f"- The sample label for this record is **{outcome}**.",
+                "",
+                "#### How to use it",
+                "- Treat this as a demo retrieval explanation. In the full system, the retrieved judgment should be opened and verified before being cited.",
+            ]
+        )
 
     @staticmethod
     def _authority_bullets(items: list[dict[str, Any]]) -> list[str]:

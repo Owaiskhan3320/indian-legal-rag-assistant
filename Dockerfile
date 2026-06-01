@@ -20,6 +20,7 @@ RUN python -m pip install --upgrade pip \
 COPY app.py streamlit_app.py ./
 COPY src ./src
 COPY scripts ./scripts
+COPY sample_data ./sample_data
 COPY README.md ./
 
 RUN mkdir -p /app/artifacts /app/temp /cache/huggingface /cache/sentence-transformers

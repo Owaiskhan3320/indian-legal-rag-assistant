@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     app_name: str = "Legal AI Assistant"
     log_level: str = "INFO"
+    demo_mode: bool = False
 
     classifier_repo_id: str = "L-NLProc/NyayaAnumana-Transformer-Models"
     classifier_subfolder: str = (
@@ -157,6 +158,18 @@ class Settings(BaseSettings):
         self.qa_embedding_model_name = model_name
         self.qa_embedding_query_prefix = query_prefix
         self.qa_embedding_passage_prefix = passage_prefix
+
+        if self.demo_mode:
+            self.retrieval_index_path = "artifacts/demo/case_index.faiss"
+            self.retrieval_metadata_path = "artifacts/demo/case_metadata.sqlite"
+            self.qa_retrieval_index_path = "artifacts/demo/qa_chunk_index.faiss"
+            self.qa_retrieval_metadata_path = "artifacts/demo/qa_chunk_metadata.sqlite"
+            self.qa_retrieval_embedding_store_path = "artifacts/demo/qa_chunk_embeddings.npy"
+            self.reference_law_index_path = "artifacts/demo/reference_law_index.faiss"
+            self.reference_law_metadata_path = "artifacts/demo/reference_law_metadata.sqlite"
+            self.retrieval_build_manifest_path = "artifacts/demo/retrieval_build_manifest.json"
+            self.retrieval_build_state_path = "artifacts/demo/retrieval_build_state.json"
+            self.retrieval_build_work_dir = "artifacts/demo/build_work"
         return self
 
     def resolve_path(self, value: str) -> Path:

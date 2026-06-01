@@ -2,7 +2,7 @@
 
 Nyaya Case Insight is an end-to-end Indian legal RAG project that routes legal questions to the right kind of source before generating an answer. The system separates official reference law, case-law retrieval, and uploaded-document question answering instead of treating all legal text as one mixed corpus.
 
-The project is built as a portfolio-grade legal AI engineering system: it includes retrieval, classification, structured answer generation, benchmark evaluation, Docker deployment, and Cloudflare Tunnel support for live demos. It is a legal information and research-assistance prototype, not a legal-advice product.
+The project is built as an end-to-end legal AI research prototype: it includes retrieval, classification, structured answer generation, benchmark evaluation, Docker deployment, and Cloudflare Tunnel support for live demos. It is a legal information and research-assistance prototype, not a legal-advice product.
 
 ## Why This Project Exists
 
@@ -20,6 +20,21 @@ General-purpose LLM answers often blur these boundaries. They may sound fluent w
 - Produces structured answers with source labels, reasoning, next steps, and caution.
 - Reports benchmark results on judgment prediction, statute identification, statute retrieval, and precedent retrieval.
 - Runs locally with Docker Compose and can be exposed through Cloudflare Tunnel for demos.
+
+## Feature Status
+
+| Feature | Status |
+|---|---|
+| Source-routed RAG | Implemented |
+| Reference-law retrieval | Implemented locally |
+| Case-law retrieval | Implemented locally |
+| Uploaded-document Q/A | Implemented |
+| Judgment prediction | Experimental triage signal |
+| Benchmark evaluation | Implemented |
+| Docker deployment | Implemented |
+| Cloudflare demo tunnel | Supported |
+| Public sample/demo mode | Implemented |
+| Legal advice generation | Not supported |
 
 ## System Architecture
 
@@ -90,6 +105,12 @@ The repository does not redistribute the local reference-law files or indexed ar
 
 Uploaded documents are handled at session level. They are used only for the current interaction and are not part of the permanent case-law or reference-law corpus.
 
+### Public Demo Data
+
+The repository includes a small `sample_data/` folder for reproducible portfolio runs. This sample data contains short reference-law records, short demo case summaries, and one sample uploaded-document text file. It is designed only to verify the application workflow after cloning the repository.
+
+The public demo data is not the full research corpus, not benchmark data, and not a substitute for the locally prepared legal indexes used in the complete project.
+
 ## Evaluation
 
 The project was evaluated as a research artefact across separate benchmark lanes. These tasks measure different behaviours and should not be collapsed into one score.
@@ -104,6 +125,14 @@ The project was evaluated as a research artefact across separate benchmark lanes
 The results are intentionally reported conservatively. The system shows moderate judgment-prediction performance and modest retrieval performance. The strongest contribution is not leaderboard performance; it is the complete source-routed architecture, benchmark mapping, and deployable legal RAG workflow.
 
 Detailed evaluation notes are in [docs/evaluation.md](docs/evaluation.md).
+
+## Limitations
+
+- The system is a legal information prototype, not a legal-advice product.
+- Retrieval quality depends on the completeness and freshness of the indexed legal corpus.
+- Judgment prediction is used only as a triage signal and should not be treated as a legal conclusion.
+- The public repository does not include large datasets, full FAISS indexes, SQLite databases, or model weights.
+- Benchmark results are modest and are reported to show system behaviour, not leaderboard-level performance.
 
 ## Technology Stack
 
@@ -153,6 +182,35 @@ Open:
 http://127.0.0.1:8501
 ```
 
+## Public Demo Mode
+
+The full local setup uses private/local artifacts that are intentionally not committed to GitHub. For review and portfolio use, the repository includes a small reproducible demo mode.
+
+Build the public sample store:
+
+```powershell
+cd C:\Project
+.\.venv\Scripts\Activate.ps1
+$env:DEMO_MODE="true"
+python scripts\build_demo_store.py
+```
+
+Then run the app with demo mode enabled:
+
+```powershell
+$env:DEMO_MODE="true"
+python app.py
+```
+
+In another terminal:
+
+```powershell
+$env:DEMO_MODE="true"
+streamlit run streamlit_app.py
+```
+
+The demo mode uses `artifacts/demo/` and does not touch the full judgment vector DB or full reference-law indexes.
+
 ## Docker Deployment
 
 The Docker setup runs the backend and frontend as separate services:
@@ -166,6 +224,15 @@ Start:
 
 ```powershell
 cd C:\Project
+docker compose up -d --build
+```
+
+For a Docker-based demo clone, first build the sample store:
+
+```powershell
+cd C:\Project
+$env:DEMO_MODE="true"
+docker compose --profile demo run --rm nyaya-demo-builder
 docker compose up -d --build
 ```
 
@@ -205,6 +272,7 @@ This creates a temporary public link for live demos. The link works only while t
 src/                  Core backend, routing, retrieval, answer, and API code
 scripts/              Build and evaluation utilities
 docs/                 Architecture, evaluation, and deployment notes
+sample_data/          Small public demo corpus for reproducible runs
 streamlit_app.py      Streamlit frontend
 app.py                FastAPI launcher
 requirements.txt      Python dependencies
@@ -229,6 +297,10 @@ The repository intentionally excludes large and sensitive runtime assets:
 - Cloudflare credentials
 
 This keeps the repository lightweight, safe to clone, and suitable for portfolio review.
+
+## License
+
+The source code is released under the MIT License. External legal datasets, official legal texts, model repositories, and benchmark datasets are not redistributed and remain governed by their original licences or terms of use.
 
 ## Responsible Use
 
