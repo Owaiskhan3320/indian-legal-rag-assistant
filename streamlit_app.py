@@ -1395,58 +1395,6 @@ def render_chat_empty_state() -> None:
     return
 
 
-def _legacy_render_attachment_popover(api_url: str, key_prefix: str) -> None:
-    popover_factory = getattr(st, "popover", None)
-    context = popover_factory("📎") if callable(popover_factory) else st.expander("📎", expanded=False)
-    with context:
-        if st.session_state.uploaded_document_info:
-            doc_info = st.session_state.uploaded_document_info
-            st.markdown(f"**{doc_info['filename']}**")
-            st.caption(
-                f"{doc_info.get('chunk_count', 0)} chunks · {doc_info.get('word_count', 0)} words · document-only answers"
-            )
-            replacement_file = st.file_uploader(
-                "Replace uploaded document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_replacement_document_popover",
-                label_visibility="collapsed",
-            )
-            action_left, action_right = st.columns(2)
-            with action_left:
-                if st.button(
-                    "Replace",
-                    key=f"{key_prefix}_replace_document_popover",
-                    use_container_width=True,
-                    disabled=replacement_file is None,
-                ):
-                    handle_document_upload(api_url, replacement_file)
-                    st.rerun()
-            with action_right:
-                if st.button(
-                    "Remove",
-                    key=f"{key_prefix}_remove_document_popover",
-                    use_container_width=True,
-                ):
-                    handle_document_clear(api_url)
-                    st.rerun()
-        else:
-            uploaded_file = st.file_uploader(
-                "Attach legal document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_uploaded_document_popover",
-                label_visibility="collapsed",
-            )
-            st.caption("Attach one document if you want a fast document-only answer.")
-            if st.button(
-                "Attach",
-                key=f"{key_prefix}_attach_document_popover",
-                use_container_width=True,
-                disabled=uploaded_file is None,
-            ):
-                handle_document_upload(api_url, uploaded_file)
-                st.rerun()
-
-
 def render_document_sidebar(api_url: str, key_prefix: str) -> None:
     st.markdown('<div class="sidebar-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Attach legal document</div>', unsafe_allow_html=True)
@@ -1581,57 +1529,6 @@ def render_document_inline_strip(api_url: str, key_prefix: str) -> None:
         ):
             handle_document_upload(api_url, uploaded_file)
 
-
-def _unused_render_attachment_popover_legacy(api_url: str, key_prefix: str) -> None:
-    popover_factory = getattr(st, "popover", None)
-    context = popover_factory("📎") if callable(popover_factory) else st.expander("📎", expanded=False)
-    with context:
-        if st.session_state.uploaded_document_info:
-            doc_info = st.session_state.uploaded_document_info
-            st.markdown(f"**{doc_info['filename']}**")
-            st.caption(
-                f"{doc_info.get('chunk_count', 0)} chunks | {doc_info.get('word_count', 0)} words | document-only answers"
-            )
-            replacement_file = st.file_uploader(
-                "Replace uploaded document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_replacement_document_popover_clean",
-                label_visibility="collapsed",
-            )
-            action_left, action_right = st.columns(2)
-            with action_left:
-                if st.button(
-                    "Replace",
-                    key=f"{key_prefix}_replace_document_popover_clean",
-                    use_container_width=True,
-                    disabled=replacement_file is None,
-                ):
-                    handle_document_upload(api_url, replacement_file)
-                    st.rerun()
-            with action_right:
-                if st.button(
-                    "Remove",
-                    key=f"{key_prefix}_remove_document_popover_clean",
-                    use_container_width=True,
-                ):
-                    handle_document_clear(api_url)
-                    st.rerun()
-        else:
-            uploaded_file = st.file_uploader(
-                "Attach legal document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_uploaded_document_popover_clean",
-                label_visibility="collapsed",
-            )
-            st.caption("Attach one document for fast document-only answers.")
-            if st.button(
-                "Attach",
-                key=f"{key_prefix}_attach_document_popover_clean",
-                use_container_width=True,
-                disabled=uploaded_file is None,
-            ):
-                handle_document_upload(api_url, uploaded_file)
-                st.rerun()
 
 def render_attachment_popover(api_url: str, key_prefix: str) -> None:
     popover_factory = getattr(st, "popover", None)
