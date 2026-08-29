@@ -9,7 +9,6 @@ import sys
 import uuid
 
 import httpx
-import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -1006,11 +1005,16 @@ def render_metric(label: str, value: str, caption: str = "") -> None:
     )
 
 
-def render_probability_table(probabilities: dict[str, float]) -> None:
-    df = pd.DataFrame(
-        [{"Outcome": outcome, "Probability %": value} for outcome, value in probabilities.items()]
-    ).sort_values("Probability %", ascending=False)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+def format_confidence_label(value: float | int | str | None) -> str:
+    try:
+        score = float(value or 0.0)
+    except (TypeError, ValueError):
+        return "Preliminary"
+    if score >= 80:
+        return "High"
+    if score >= 60:
+        return "Moderate"
+    return "Preliminary"
 
 
 def render_notice_box(title: str, items: list[str]) -> None:
@@ -1201,12 +1205,7 @@ def build_review_signal(result: dict) -> str:
     lowered = " ".join(item.lower() for item in advisories)
     if any(term in lowered for term in ["mixed", "distinguish", "manual review", "caution"]):
         return "Evidence strength: Mixed"
-    confidence = float(result.get("confidence_score") or 0.0)
-    if confidence >= 80:
-        return "Confidence: High"
-    if confidence >= 60:
-        return "Confidence: Moderate"
-    return "Confidence: Preliminary"
+    return f"Confidence: {format_confidence_label(result.get('confidence_score'))}"
 
 
 def render_source_chips(source_ids: list[str], label: str = "Sources used") -> None:
@@ -1266,28 +1265,12 @@ def render_user_message(content: str) -> None:
     )
 
 
-def format_relevance_score(value: float | int | str | None, item: dict | None = None) -> str:
-    try:
-        final_score = float(value or 0.0)
-    except Exception:
-        final_score = 0.0
-    base_score = 0.0
-    lexical_score = 0.0
-    fit_bonus = 0.0
-    if isinstance(item, dict):
-        try:
-            base_score = float(item.get("base_similarity") or 0.0)
-        except Exception:
-            base_score = 0.0
-        try:
-            lexical_score = float(item.get("lexical_similarity") or 0.0)
-        except Exception:
-            lexical_score = 0.0
-        fit_band = clean_text(item.get("fit_band")) or ""
-        fit_bonus = {"High": 0.14, "Moderate": 0.08, "Low": 0.03}.get(fit_band.title(), 0.0)
-    blended = (final_score * 0.3) + (base_score * 0.45) + (lexical_score * 0.25) + fit_bonus
-    blended = min(max(blended, 0.18), 0.96)
-    return f"{round(blended * 100):d}%"
+def format_relevance_label(item: dict | None = None) -> str:
+    for field in ("fit_band", "retrieval_confidence"):
+        label = str((item or {}).get(field) or "").strip().title()
+        if label in {"High", "Moderate", "Low"}:
+            return label
+    return "Not rated"
 
 
 def humanize_case_fit_note(note: str | None) -> str:
@@ -1393,58 +1376,6 @@ def render_loading_message(text: str) -> None:
 
 def render_chat_empty_state() -> None:
     return
-
-
-def _legacy_render_attachment_popover(api_url: str, key_prefix: str) -> None:
-    popover_factory = getattr(st, "popover", None)
-    context = popover_factory("📎") if callable(popover_factory) else st.expander("📎", expanded=False)
-    with context:
-        if st.session_state.uploaded_document_info:
-            doc_info = st.session_state.uploaded_document_info
-            st.markdown(f"**{doc_info['filename']}**")
-            st.caption(
-                f"{doc_info.get('chunk_count', 0)} chunks · {doc_info.get('word_count', 0)} words · document-only answers"
-            )
-            replacement_file = st.file_uploader(
-                "Replace uploaded document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_replacement_document_popover",
-                label_visibility="collapsed",
-            )
-            action_left, action_right = st.columns(2)
-            with action_left:
-                if st.button(
-                    "Replace",
-                    key=f"{key_prefix}_replace_document_popover",
-                    use_container_width=True,
-                    disabled=replacement_file is None,
-                ):
-                    handle_document_upload(api_url, replacement_file)
-                    st.rerun()
-            with action_right:
-                if st.button(
-                    "Remove",
-                    key=f"{key_prefix}_remove_document_popover",
-                    use_container_width=True,
-                ):
-                    handle_document_clear(api_url)
-                    st.rerun()
-        else:
-            uploaded_file = st.file_uploader(
-                "Attach legal document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_uploaded_document_popover",
-                label_visibility="collapsed",
-            )
-            st.caption("Attach one document if you want a fast document-only answer.")
-            if st.button(
-                "Attach",
-                key=f"{key_prefix}_attach_document_popover",
-                use_container_width=True,
-                disabled=uploaded_file is None,
-            ):
-                handle_document_upload(api_url, uploaded_file)
-                st.rerun()
 
 
 def render_document_sidebar(api_url: str, key_prefix: str) -> None:
@@ -1581,57 +1512,6 @@ def render_document_inline_strip(api_url: str, key_prefix: str) -> None:
         ):
             handle_document_upload(api_url, uploaded_file)
 
-
-def _unused_render_attachment_popover_legacy(api_url: str, key_prefix: str) -> None:
-    popover_factory = getattr(st, "popover", None)
-    context = popover_factory("📎") if callable(popover_factory) else st.expander("📎", expanded=False)
-    with context:
-        if st.session_state.uploaded_document_info:
-            doc_info = st.session_state.uploaded_document_info
-            st.markdown(f"**{doc_info['filename']}**")
-            st.caption(
-                f"{doc_info.get('chunk_count', 0)} chunks | {doc_info.get('word_count', 0)} words | document-only answers"
-            )
-            replacement_file = st.file_uploader(
-                "Replace uploaded document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_replacement_document_popover_clean",
-                label_visibility="collapsed",
-            )
-            action_left, action_right = st.columns(2)
-            with action_left:
-                if st.button(
-                    "Replace",
-                    key=f"{key_prefix}_replace_document_popover_clean",
-                    use_container_width=True,
-                    disabled=replacement_file is None,
-                ):
-                    handle_document_upload(api_url, replacement_file)
-                    st.rerun()
-            with action_right:
-                if st.button(
-                    "Remove",
-                    key=f"{key_prefix}_remove_document_popover_clean",
-                    use_container_width=True,
-                ):
-                    handle_document_clear(api_url)
-                    st.rerun()
-        else:
-            uploaded_file = st.file_uploader(
-                "Attach legal document",
-                type=["txt", "md", "docx", "pdf"],
-                key=f"{key_prefix}_uploaded_document_popover_clean",
-                label_visibility="collapsed",
-            )
-            st.caption("Attach one document for fast document-only answers.")
-            if st.button(
-                "Attach",
-                key=f"{key_prefix}_attach_document_popover_clean",
-                use_container_width=True,
-                disabled=uploaded_file is None,
-            ):
-                handle_document_upload(api_url, uploaded_file)
-                st.rerun()
 
 def render_attachment_popover(api_url: str, key_prefix: str) -> None:
     popover_factory = getattr(st, "popover", None)
@@ -1999,7 +1879,7 @@ def render_case_group(title: str, cases: list[dict], api_url: str, key_prefix: s
         with st.expander(f"{index}. {label}", expanded=(index == 1)):
             meta_left, meta_right, meta_third = st.columns([2.2, 1, 1.2])
             meta_left.markdown(f"**Case ID**  \n`{item['case_id']}`")
-            meta_right.markdown(f"**Relevance**  \n{format_relevance_score(item.get('similarity'), item)}")
+            meta_right.markdown(f"**Match strength**  \n{format_relevance_label(item)}")
             meta_third.markdown(f"**Outcome**  \n{item.get('label_name') or 'Unknown'}")
             chips = [item.get("court"), item.get("case_type"), item.get("date")]
             if item.get("fit_band"):
@@ -2585,7 +2465,7 @@ with triage_tab:
             with metric_2:
                 render_metric("Likely effect for your side", analysis_result["favorability_label"])
             with metric_3:
-                render_metric("Confidence", f'{analysis_result["confidence_score"]:.2f}%')
+                render_metric("Confidence", format_confidence_label(analysis_result.get("confidence_score")))
             with metric_4:
                 render_metric("How much to rely on it", analysis_result["prediction_posture"])
 
@@ -2613,8 +2493,7 @@ with triage_tab:
                 st.markdown('<div class="section-title">Review summary</div>', unsafe_allow_html=True)
                 st.caption("Professional triage summary based on the current intake, retrieved authorities, and prediction signal.")
                 st.markdown(analysis_result["explanation"] or "No explanation was requested.")
-                with st.expander("Confidence breakdown", expanded=True):
-                    render_probability_table(analysis_result["probabilities"])
+                st.caption("Confidence is a qualitative review signal, not a calibrated probability.")
                 st.markdown("</div>", unsafe_allow_html=True)
             with triage_tab_2:
                 render_similar_cases_only(analysis_result["workspace"], api_url, key_prefix="triage_workspace")
