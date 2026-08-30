@@ -53,6 +53,14 @@ def test_procedure_question_routes_to_reference_law() -> None:
     assert profile.workflow == "case_qa"
 
 
+def test_personal_data_question_routes_to_reference_law() -> None:
+    profile = route("Can a company process my personal data?")
+
+    assert profile.lane == "reference_law"
+    assert profile.task == "procedure_or_remedy"
+    assert profile.workflow == "case_qa"
+
+
 def test_practical_question_routes_to_hybrid_guidance() -> None:
     profile = route(
         "What can I do if an online marketplace refuses a refund for a defective product?"
@@ -65,6 +73,14 @@ def test_practical_question_routes_to_hybrid_guidance() -> None:
 
 def test_case_explanation_query_routes_to_case_law() -> None:
     profile = route("Explain this judgment in simple language.")
+
+    assert profile.lane == "case_law"
+    assert profile.task == "case_explanation"
+    assert profile.workflow == "case_qa"
+
+
+def test_case_law_reasoning_terms_stay_in_case_law() -> None:
+    profile = route("Explain the ratio decidendi in consumer cases.")
 
     assert profile.lane == "case_law"
     assert profile.task == "case_explanation"
