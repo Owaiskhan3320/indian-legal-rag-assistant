@@ -33,6 +33,9 @@ CASE_EXPLANATION_MARKERS = (
     "facts of",
     "holding in",
     "ratio of",
+    "ratio decidendi",
+    "obiter dicta",
+    "binding precedent",
 )
 
 STATUTE_MARKERS = (
@@ -44,9 +47,6 @@ STATUTE_MARKERS = (
     "statute",
     "provision",
     "legal provision",
-    "binding precedent",
-    "ratio decidendi",
-    "doctrinal basis",
 )
 
 COMPARATIVE_MARKERS = (
@@ -61,55 +61,24 @@ COMPARATIVE_MARKERS = (
     "what changes the outcome",
 )
 
-EXACT_PROVISION_PREFIXES = (
-    "what does article",
-    "what is article",
-    "what does section",
-    "what is section",
-    "what does rule",
-    "what is rule",
-    "which article",
-    "which section",
-    "which rule",
-)
-
-LAW_ONLY_PATTERNS = (
-    "what remedies",
-    "what remedy",
+LAW_QUERY_MARKERS = (
+    "remedy",
     "time limit",
-    "limitation period",
-    "first appeal",
-    "second appeal",
-    "rti application",
-    "not answered",
-    "no response",
-    "no reply",
-    "within 30 days",
-    "personal information",
+    "limitation",
+    "appeal",
+    "right to ",
+    "rights under",
     "personal data",
-    "privacy law",
     "data protection",
     "without consent",
-    "cctv",
-    "surveillance",
-    "commercial confidence",
-    "trade secret",
-    "intellectual property",
-    "fiduciary",
-    "certified copies",
-    "inspect records",
-    "inspection of records",
-    "major penalty",
-    "minor penalty",
-    "difference between rule 14 and rule 16",
-    "right to education",
-    "right to property",
-    "deprived of property",
-    "authority of law",
-    "personal liberty",
-    "wrong product",
+    "disclosure",
+    "penalty",
+    "procedure",
+    "jurisdiction",
     "return window",
 )
+
+LAW_QUESTION_PREFIXES = ("what is", "what are", "what does", "which", "explain")
 
 LAW_GUIDANCE_DOMAINS = {
     "consumer",
@@ -301,8 +270,11 @@ class QueryRouterService:
         domain_confidence = float(query_profile.get("confidence") or 0.0)
 
         direct_case_lookup = bool(referenced_case_ids)
-        exact_provision_lookup = self._is_exact_provision_lookup(cleaned=cleaned, lowered=lowered)
-        law_first_query = self._is_law_first_query(cleaned=cleaned, lowered=lowered, domain=str(domain) if domain else None)
+        exact_provision_lookup = self._is_exact_provision_lookup(lowered)
+        law_first_query = self._is_law_first_query(
+            lowered,
+            domain=str(domain) if domain else None,
+        )
         practical_guidance = any(marker in lowered for marker in PRACTICAL_ADVICE_MARKERS)
         statute_sensitive = exact_provision_lookup or law_first_query or any(marker in lowered for marker in STATUTE_MARKERS)
         complexity = self._infer_complexity(cleaned, lowered)
@@ -507,32 +479,33 @@ class QueryRouterService:
         return "document_reasoning"
 
     @staticmethod
-    def _is_exact_provision_lookup(*, cleaned: str, lowered: str) -> bool:
-        if any(lowered.startswith(prefix) for prefix in EXACT_PROVISION_PREFIXES):
-            return True
-        if re.search(r"\b(?:article|section|rule)\s+\d+[A-Za-z]?(?:\([^)]+\))*\b", lowered, flags=re.I):
-            head = " ".join(lowered.split()[:8])
-            if any(token in head for token in ("what", "which", "difference", "explain", "define")):
-                return True
-        return False
+    def _is_exact_provision_lookup(lowered: str) -> bool:
+        provision = re.search(
+            r"\b(?:article|section|rule)\s+\d+[A-Za-z]?(?:\([^)]+\))*\b",
+            lowered,
+            flags=re.I,
+        )
+        if not provision:
+            return False
+
+        head = " ".join(lowered.split()[:8])
+        return any(
+            token in head
+            for token in ("what", "which", "difference", "explain", "define")
+        )
 
     @staticmethod
-    def _is_law_first_query(*, cleaned: str, lowered: str, domain: str | None) -> bool:
-        if any(pattern in lowered for pattern in LAW_ONLY_PATTERNS):
+    def _is_law_first_query(lowered: str, *, domain: str | None) -> bool:
+        if any(marker in lowered for marker in LAW_QUERY_MARKERS):
             return True
-        if any(lowered.startswith(prefix) for prefix in ("what does", "what is", "which rule", "which section", "which article")):
-            if domain in {"consumer", "information", "service", "tax", "motor_accident", "criminal", "constitutional", "privacy"}:
-                return True
-        if any(marker in lowered for marker in ("under the rti act", "under the consumer protection act", "under ccs cca rules", "under the constitution")):
+
+        if re.search(r"\b(?:act|code|rules?|constitution)\b", lowered):
             return True
-        if (
-            "article 21a" in lowered
-            or "article 300a" in lowered
-            or ("property" in lowered and "authority of law" in lowered)
-            or "deprived of property" in lowered
-        ):
-            return True
-        return False
+
+        return bool(
+            domain in LAW_GUIDANCE_DOMAINS
+            and any(lowered.startswith(prefix) for prefix in LAW_QUESTION_PREFIXES)
+        )
 
     @staticmethod
     def _extract_exact_terms(question: str) -> list[str]:
