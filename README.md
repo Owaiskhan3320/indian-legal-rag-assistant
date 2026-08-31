@@ -1,125 +1,150 @@
 # Nyaya Case Insight
 
-## About
+Nyaya Case Insight is an Indian legal Retrieval-Augmented Generation (RAG) project. It answers legal-information questions by routing them to the most suitable source: reference law, case law, or a document uploaded by the user.
 
-Nyaya Case Insight is an Indian legal RAG project built to answer legal-information questions with clearer source control. Instead of sending every question to one mixed legal corpus, it separates three evidence lanes: official reference law, Indian case law, and user-uploaded documents.
+> This is a learning and portfolio project. It provides legal information, not legal advice.
 
-The project combines a FastAPI backend, Streamlit interface, FAISS/SQLite retrieval, a judgment-prediction triage component, benchmark evaluation, Docker deployment, and a small public demo mode. The full local setup uses larger legal indexes that are not redistributed; the GitHub version includes sample data so the workflow can still be run and reviewed.
+## What It Does
 
-This is a research and portfolio prototype, not a legal-advice product.
+- Answers questions using retrieved legal sources instead of relying only on an LLM.
+- Uses official legal materials for questions about sections, articles, rules, rights, and procedures.
+- Uses Indian judgments for similar-case and precedent questions.
+- Supports question answering over a document uploaded during the current session.
+- Shows the sources used for an answer and supports follow-up questions.
 
-## Why This Project Exists
+## Why Source Routing Matters
 
-Legal questions are source-sensitive. A user asking about a time limit, remedy, definition, constitutional right, or procedure usually needs the correct statute, rule, article, or official legal text first. A user asking for similar cases or precedent support needs judgments. A user asking about an uploaded notice, order, contract, or judgment needs document-specific analysis.
+Different legal questions need different evidence. A question about a statutory time limit should be grounded in legislation, while a request for similar cases should search judgments. Keeping these sources separate makes retrieval easier to understand and reduces answers based on the wrong type of document.
 
-General-purpose LLM answers often blur these boundaries. They may sound fluent while relying on the wrong source type. This project addresses that problem through a source-routed Retrieval-Augmented Generation architecture.
+## How It Works
 
-## What the System Does
+```text
+User question
+    |
+    v
+Streamlit interface
+    |
+    v
+FastAPI backend
+    |
+    v
+Query router
+    |
+    +-- Reference law
+    +-- Case law
+    +-- Uploaded document
+    |
+    v
+Answer with sources
+```
 
-- Routes legal questions to reference law, case law, uploaded documents, or a hybrid path.
-- Retrieves official legal provisions for statute-first questions.
-- Retrieves Indian judgments for similar-case search, precedent support, and case explanation.
-- Supports uploaded-document Q/A within the current session.
-- Includes a judgment-prediction component based on NyayaAnumana-related classifier resources.
-- Produces structured answers with source labels, reasoning, next steps, and caution.
-- Reports benchmark results on judgment prediction, statute identification, statute retrieval, and precedent retrieval.
-- Runs locally with Docker Compose and can be exposed through Cloudflare Tunnel for demos.
+More detail is available in [docs/architecture.md](docs/architecture.md).
 
-## Feature Status
+## Current Scope
 
 | Feature | Status |
 |---|---|
-| Source-routed RAG | Implemented |
-| Reference-law retrieval | Implemented locally |
-| Case-law retrieval | Implemented locally |
-| Uploaded-document Q/A | Implemented |
-| Judgment prediction | Experimental triage signal |
-| Benchmark evaluation | Implemented |
-| Docker deployment | Implemented |
-| Cloudflare demo tunnel | Supported |
-| Public sample/demo mode | Implemented |
-| Legal advice generation | Not supported |
+| Source-routed legal Q&A | Implemented |
+| Reference-law retrieval | Available with local or demo data |
+| Case-law retrieval | Available with local or demo data |
+| Uploaded-document Q&A | Implemented for the current session |
+| Follow-up questions and source display | Implemented |
+| Judgment prediction | Experimental backend research component; not shown in the current UI |
+| Legal advice | Not supported |
 
-## System Architecture
+The repository still contains an experimental judgment-prediction endpoint used during research and evaluation. It is not part of the current Streamlit workflow and its output must not be treated as a legal conclusion.
 
-```text
-User Query
-   |
-   v
-Streamlit Frontend
-   |
-   v
-FastAPI Backend
-   |
-   v
-Query Router
-   |
-   +--> Reference-Law Lane
-   |       statutes, rules, constitutional provisions, official legal texts
-   |
-   +--> Case-Law Lane
-   |       judgments, similar cases, precedent support, case explanation
-   |
-   +--> Uploaded-Document Lane
-           session-level document Q/A
-   |
-   v
-Evidence Pack
-   |
-   v
-Answer Generation + Citation/Caution Layer
+## Quick Start
+
+These commands use PowerShell on Windows.
+
+```powershell
+cd C:\Project
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-The routing layer is the main design choice. It helps keep statutory questions, case-law questions, and document-specific questions grounded in the right type of material.
+Review `.env` and configure the local OpenAI-compatible LLM endpoint and model. The example configuration uses `http://127.0.0.1:1234/v1`, which can be provided by a local model server such as LM Studio.
 
-Detailed architecture notes are in [docs/architecture.md](docs/architecture.md).
+Start the backend:
 
-## Main Workflows
+```powershell
+python app.py
+```
 
-### Case Q/A
+Start the frontend in a second terminal:
 
-Used for legal questions, statute-first answers, precedent support, and follow-up questions. The system decides whether the query should use official law, case law, uploaded document context, or a hybrid source path.
+```powershell
+cd C:\Project
+.\.venv\Scripts\Activate.ps1
+streamlit run streamlit_app.py
+```
 
-### Case Review
+Open `http://127.0.0.1:8501` in a browser. The FastAPI launcher is the root [app.py](app.py), so the equivalent Uvicorn command is `python -m uvicorn app:app`.
 
-Used for structured case intake. The user provides facts, forum, role, relief sought, evidence, and opponent argument. The system retrieves similar cases and provides an outcome-oriented review with caution.
+## Demo Mode
 
-### Uploaded Document Q/A
+The full legal datasets and indexes are not included in GitHub. A small sample corpus is provided so the main workflow can still be tested.
 
-Used when the user uploads a legal document and asks questions about that document. The uploaded file is treated as session-level material and is not added to the permanent corpus.
+Build the demo store:
 
-## Data and Source Acknowledgement
+```powershell
+python scripts/build_demo_store.py
+```
 
-### Case-Law Data
+Then set demo mode before starting both the backend and frontend:
 
-The case-law side of this project uses judgment data and classifier resources related to **NyayaAnumana and INLegalLLaMA**. NyayaAnumana is introduced by Nigam et al. as a large-scale Indian legal judgment prediction dataset covering multiple Indian court and tribunal sources. In this project, those resources are used in two ways:
+```powershell
+$env:DEMO_MODE="true"
+python app.py
+```
 
-- As a case-law corpus for retrieval, similar-case search, case explanation, and precedent-style support.
-- As the basis for the judgment-prediction component used as a triage signal.
+Use the same `DEMO_MODE` command in the frontend terminal before running Streamlit. Suggested prompts are listed in [demo_questions.md](demo_questions.md).
 
-The judgment-prediction output is not treated as a legal conclusion. It is only a supporting signal inside the broader legal assistance workflow.
+## Tests
 
-NyayaAnumana and INLegalLLaMA dataset resources were used only for research and evaluation purposes. The dataset is not redistributed in this repository and remains governed by the original authors' access terms.
+Install the development dependencies and run the same focused checks used by CI:
 
-### Reference-Law Data
+```powershell
+pip install -r requirements-dev.txt
+python -m pytest -v
+python -m ruff check app.py src tests scripts --select E9,F63,F7,F82
+python -m py_compile streamlit_app.py
+```
 
-The reference-law lane uses locally prepared official legal materials such as statutes, rules, constitutional provisions, codes, and other official legal texts. These files are used to support statute-first retrieval for questions about legal rules, remedies, procedures, timelines, definitions, and constitutional provisions.
+## Docker
 
-The repository does not redistribute the local reference-law files or indexed artifacts. Users who want to reproduce the full setup should obtain official legal texts from authoritative sources such as India Code and relevant government/legal department sources, then rebuild the local reference-law index.
+For a local container run:
 
-### Uploaded Documents
+```powershell
+docker compose up -d --build
+```
 
-Uploaded documents are handled at session level. They are used only for the current interaction and are not part of the permanent case-law or reference-law corpus.
+To build the sample store with Docker:
 
-### Public Demo Data
+```powershell
+$env:DEMO_MODE="true"
+docker compose --profile demo run --rm nyaya-demo-builder
+docker compose up -d --build
+```
 
-The repository includes a small `sample_data/` folder for reproducible portfolio runs. This sample data contains short reference-law records, short demo case summaries, and one sample uploaded-document text file. It is designed only to verify the application workflow after cloning the repository.
+See [docs/deployment.md](docs/deployment.md) for health checks, environment settings, and demo deployment notes.
 
-The public demo data is not the full research corpus, not benchmark data, and not a substitute for the locally prepared legal indexes used in the complete project.
+## Data
+
+- **Case law:** judgment data and classifier resources related to NyayaAnumana and INLegalLLaMA are used for research and evaluation. They are not redistributed in this repository.
+- **Reference law:** the full local setup uses official statutes, rules, constitutional provisions, and other legal texts. These source files and generated indexes are not redistributed.
+- **Public demo:** `sample_data/` contains a small set of records for checking the application after cloning it. It is not the full research corpus.
+- **Uploaded documents:** files uploaded by a user are handled as session-level material and are not added to the permanent corpus.
+
+Users reproducing the full setup should obtain legal texts from authoritative sources, check their usage terms, and rebuild the indexes locally.
 
 ## Evaluation
 
-The project was evaluated as a research artefact across separate benchmark lanes. These tasks measure different behaviours and should not be collapsed into one score.
+The components were evaluated separately because prediction, statute identification, and retrieval measure different behaviour.
 
 | Task | Dataset | Main Result |
 |---|---:|---:|
@@ -128,198 +153,41 @@ The project was evaluated as a research artefact across separate benchmark lanes
 | Statute retrieval | IL-PCSR | Recall@10 0.1846; MRR 0.2263; MAP 0.0971 |
 | Precedent retrieval | IL-PCSR | Recall@10 0.3327; MRR 0.2860; MAP 0.1797 |
 
-The results are reported conservatively. They show moderate judgment-prediction performance and modest retrieval performance. The main value of the project is the source-routed architecture, benchmark mapping, and deployable legal RAG workflow rather than leaderboard performance.
-
-Detailed evaluation notes are in [docs/evaluation.md](docs/evaluation.md).
+These are modest results and are reported as measured. They help show where the system works and where retrieval still needs improvement. See [docs/evaluation.md](docs/evaluation.md) for the evaluation setup and interpretation.
 
 ## Limitations
 
-- The system is a legal information prototype, not a legal-advice product.
-- Retrieval quality depends on the completeness and freshness of the indexed legal corpus.
-- Judgment prediction is used only as a triage signal and should not be treated as a legal conclusion.
-- The public repository does not include large datasets, full FAISS indexes, SQLite databases, or model weights.
-- Benchmark results are modest and are reported to show system behaviour, not leaderboard-level performance.
+- Answer quality depends on the coverage and freshness of the indexed corpus.
+- Retrieval and generated answers can still be incomplete or incorrect.
+- The public demo corpus is intentionally small and cannot answer broad legal questions reliably.
+- The system does not automatically guarantee that a law or judgment is current.
+- A qualified legal professional and current official sources should be consulted before taking action.
 
-## Technology Stack
-
-- Python
-- FastAPI
-- Streamlit
-- FAISS
-- SQLite and SQLite FTS5
-- Sentence Transformers
-- `bhavyagiri/InLegal-Sbert`
-- Transformers and PyTorch
-- Docker Compose
-- Cloudflare Tunnel
-
-## Local Development
-
-Create a local environment:
-
-```powershell
-cd C:\Project
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-Copy environment settings:
-
-```powershell
-copy .env.example .env
-```
-
-Run the backend:
-
-```powershell
-python app.py
-```
-
-Run the frontend in another terminal:
-
-```powershell
-streamlit run streamlit_app.py
-```
-
-Open:
+## Project Structure
 
 ```text
-http://127.0.0.1:8501
+app.py                 FastAPI launcher
+streamlit_app.py       Streamlit interface
+src/                   Routing, retrieval, services, and API code
+scripts/               Data-building and evaluation scripts
+tests/                 Focused API and routing tests
+sample_data/           Small public demo corpus
+docs/                  Architecture, evaluation, and deployment notes
+demo_questions.md      Example questions for the demo
 ```
 
-## Public Demo Mode
-
-The full local setup depends on local artifacts that are intentionally not committed to GitHub. For review and portfolio use, the repository includes a small reproducible demo mode.
-
-Build the public sample store:
-
-```powershell
-cd C:\Project
-.\.venv\Scripts\Activate.ps1
-$env:DEMO_MODE="true"
-python scripts\build_demo_store.py
-```
-
-Then run the app with demo mode enabled:
-
-```powershell
-$env:DEMO_MODE="true"
-python app.py
-```
-
-In another terminal:
-
-```powershell
-$env:DEMO_MODE="true"
-streamlit run streamlit_app.py
-```
-
-The demo mode uses `artifacts/demo/` and does not touch the full judgment vector DB or full reference-law indexes.
-
-## Docker Deployment
-
-The Docker setup runs the backend and frontend as separate services:
-
-```text
-nyaya-api  -> FastAPI backend on port 8000
-nyaya-web  -> Streamlit frontend on port 8501
-```
-
-Start:
-
-```powershell
-cd C:\Project
-docker compose up -d --build
-```
-
-For a Docker-based demo clone, first build the sample store:
-
-```powershell
-cd C:\Project
-$env:DEMO_MODE="true"
-docker compose --profile demo run --rm nyaya-demo-builder
-docker compose up -d --build
-```
-
-Open:
-
-```text
-http://127.0.0.1:8501
-```
-
-Check backend health:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
-```
-
-Stop:
-
-```powershell
-docker compose down
-```
-
-Detailed deployment notes are in [docs/deployment.md](docs/deployment.md).
-
-## Cloudflare Tunnel Demo
-
-After Docker is running:
-
-```powershell
-cloudflared tunnel --url http://127.0.0.1:8501
-```
-
-This creates a temporary public link for live demos. The link works only while the local machine, Docker containers, and Cloudflare Tunnel process are running.
-
-## Repository Contents
-
-```text
-src/                  Core backend, routing, retrieval, answer, and API code
-scripts/              Build and evaluation utilities
-docs/                 Architecture, evaluation, and deployment notes
-sample_data/          Small public demo corpus for reproducible runs
-streamlit_app.py      Streamlit frontend
-app.py                FastAPI launcher
-requirements.txt      Python dependencies
-Dockerfile            Container image definition
-docker-compose.yml    Two-service Docker deployment
-.env.example          Safe environment template
-demo_questions.md     Curated demo prompts
-```
-
-## Files Not Included In This Repository
-
-The repository intentionally excludes large and sensitive runtime assets:
-
-- `.env`
-- `.venv/`
-- `artifacts/`
-- FAISS indexes
-- SQLite databases
-- downloaded datasets
-- model weights
-- uploaded user documents
-- Cloudflare credentials
-
-This keeps the repository lightweight, safe to clone, and suitable for portfolio review.
-
-## License
-
-The source code is released under the MIT License. External legal datasets, official legal texts, model repositories, and benchmark datasets are not redistributed and remain governed by their original licences or terms of use.
-
-## Responsible Use
-
-The system provides legal information and research support. It does not provide legal advice, does not replace a lawyer, and should not be used as the sole basis for legal action. Retrieved authorities should be checked against official and current legal materials before reliance.
+Large runtime files such as `.env`, model weights, FAISS indexes, SQLite databases, downloaded datasets, and uploaded documents are intentionally excluded from Git.
 
 ## References
 
-- Shubham Kumar Nigam, Deepak Patnaik Balaramamahanthi, Shivam Mishra, Noel Shallum, Kripabandhu Ghosh, and Arnab Bhattacharya. 2025. [NyayaAnumana and INLegalLLaMA: The Largest Indian Legal Judgment Prediction Dataset and Specialized Language Model for Enhanced Decision Analysis](https://aclanthology.org/2025.coling-main.738/). Proceedings of COLING 2025.
-- Vijit Malik, Rishabh Sanjay, Shubham Kumar Nigam, Kripabandhu Ghosh, Shouvik Kumar Guha, Arnab Bhattacharya, and Ashutosh Modi. 2021. [ILDC for CJPE: Indian Legal Documents Corpus for Court Judgment Prediction and Explanation](https://aclanthology.org/2021.acl-long.313/). ACL-IJCNLP 2021.
-- Shounak Paul, Raghav Dogra, Pawan Goyal, and Saptarshi Ghosh. 2026. [ILSIC: Corpora for Identifying Indian Legal Statutes from Queries by Laymen](https://aclanthology.org/2026.findings-eacl.354/). Findings of EACL 2026.
-- Shounak Paul, Dhananjay Ghumare, Pawan Goyal, Saptarshi Ghosh, and Ashutosh Modi. 2025. [IL-PCSR: Legal Corpus for Prior Case and Statute Retrieval](https://aclanthology.org/2025.emnlp-main.738/). EMNLP 2025.
-- Government of India. [India Code: Digital Repository of Central and State Acts](https://www.indiacode.nic.in/).
+- Shubham Kumar Nigam et al. [NyayaAnumana and INLegalLLaMA](https://aclanthology.org/2025.coling-main.738/), COLING 2025.
+- Vijit Malik et al. [ILDC for CJPE](https://aclanthology.org/2021.acl-long.313/), ACL-IJCNLP 2021.
+- Shounak Paul et al. [ILSIC](https://aclanthology.org/2026.findings-eacl.354/), Findings of EACL 2026.
+- Shounak Paul et al. [IL-PCSR](https://aclanthology.org/2025.emnlp-main.738/), EMNLP 2025.
+- Government of India, [India Code](https://www.indiacode.nic.in/).
 
-## Project Summary
+## License and Responsible Use
 
-Indian legal RAG system with statute-first routing, case-law retrieval, uploaded-document Q/A, judgment prediction, benchmark evaluation, Docker Compose deployment, and Cloudflare Tunnel demo support.
+The source code is released under the MIT License. External datasets, legal texts, and models remain governed by their original licences and terms.
+
+This project is for legal information, research, and education. It must not be used as the sole basis for legal action, and retrieved authorities should be checked against current official materials.
