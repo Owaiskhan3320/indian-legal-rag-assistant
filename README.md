@@ -140,7 +140,26 @@ See [docs/deployment.md](docs/deployment.md) for health checks, environment sett
 - **Public demo:** `sample_data/` contains a small set of records for checking the application after cloning it. It is not the full research corpus.
 - **Uploaded documents:** files uploaded by a user are handled as session-level material and are not added to the permanent corpus.
 
-Users reproducing the full setup should obtain legal texts from authoritative sources, check their usage terms, and rebuild the indexes locally.
+The default private-data layout is:
+
+```text
+data/
+|-- case_law/
+|   |-- train.csv
+|   |-- dev.csv
+|   |-- test.csv
+|   `-- sample_10k.csv
+`-- reference_law/
+    `-- official legal documents
+```
+
+The `data/` directory is ignored by Git. If your files are stored elsewhere, set
+`TRAIN_DATASET_PATH`, `DEV_DATASET_PATH`, `TEST_DATASET_PATH`,
+`SAMPLE_DATASET_PATH`, and `REFERENCE_LAW_SOURCE_DIR` in `.env`. Relative paths
+are resolved from the repository root, while absolute paths are also supported.
+
+Users reproducing the full setup should obtain legal texts from authoritative
+sources, check their usage terms, and rebuild the indexes locally.
 
 ## Evaluation
 
