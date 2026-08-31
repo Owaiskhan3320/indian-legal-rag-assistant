@@ -22,23 +22,17 @@ class Settings(BaseSettings):
     embedding_query_instruction: str = ""
     embedding_document_instruction: str = ""
 
-    train_dataset_path: str = (
-        r"B:\Dataset\CJPE_ext_SCI_HCs_tribunals_dailyorder_multi_wo_RoD_ternary.csv"
-    )
-    dev_dataset_path: str = (
-        r"B:\Dataset\CJPE_ext_SCI_HCs_tribunals_dailyorder_dev_wo_RoD_ternary (1).csv"
-    )
-    test_dataset_path: str = (
-        r"B:\Dataset\CJPE_ext_SCI_HCs_tribunals_dailyorder_test_wo_RoD_ternary.csv"
-    )
-    sample_dataset_path: str = r"B:\Dataset\sample_10k.csv"
+    train_dataset_path: str = "data/case_law/train.csv"
+    dev_dataset_path: str = "data/case_law/dev.csv"
+    test_dataset_path: str = "data/case_law/test.csv"
+    sample_dataset_path: str = "data/case_law/sample_10k.csv"
 
     retrieval_index_path: str = "artifacts/case_index.faiss"
     retrieval_metadata_path: str = "artifacts/case_metadata.sqlite"
     qa_retrieval_index_path: str = "artifacts/qa_chunk_index.faiss"
     qa_retrieval_metadata_path: str = "artifacts/qa_chunk_metadata.sqlite"
     qa_retrieval_embedding_store_path: str = "artifacts/qa_chunk_embeddings.npy"
-    reference_law_source_dir: str = r"C:\new corpus"
+    reference_law_source_dir: str = "data/reference_law"
     reference_law_index_path: str = "artifacts/reference_law_index.faiss"
     reference_law_metadata_path: str = "artifacts/reference_law_metadata.sqlite"
     retrieval_build_manifest_path: str = "artifacts/retrieval_build_manifest.json"
