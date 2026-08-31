@@ -4,6 +4,10 @@ Indian Legal Research & Retrieval System is an Indian legal Retrieval-Augmented 
 
 > This is a learning and portfolio project. It provides legal information, not legal advice.
 
+## Application Preview
+
+![Indian Legal Research and Retrieval System answering an Article 21 question](docs/images/app-preview.jpg)
+
 ## What It Does
 
 - Answers questions using retrieved legal sources instead of relying only on an LLM.
