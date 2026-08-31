@@ -1,6 +1,6 @@
-# Nyaya Case Insight
+# Indian Legal Research & Retrieval System
 
-Nyaya Case Insight is an Indian legal Retrieval-Augmented Generation (RAG) project. It answers legal-information questions by routing them to the most suitable source: reference law, case law, or a document uploaded by the user.
+Indian Legal Research & Retrieval System is an Indian legal Retrieval-Augmented Generation (RAG) project. It answers legal-information questions by routing them to the most suitable source: reference law, case law, or a document uploaded by the user.
 
 > This is a learning and portfolio project. It provides legal information, not legal advice.
 

@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 load_dotenv(PROJECT_ROOT / ".env")
 
 st.set_page_config(
-    page_title="Nyaya Case Insight",
+    page_title="Indian Legal Research & Retrieval System",
     page_icon="N",
     layout="centered",
     initial_sidebar_state="expanded",
@@ -230,7 +230,7 @@ for key, default in {
         st.session_state[key] = default
 
 
-st.title("Nyaya Case Insight")
+st.title("Indian Legal Research & Retrieval System")
 st.caption(
     "Ask questions about Indian law and retrieved judgments, or attach one legal document for focused Q&A."
 )
