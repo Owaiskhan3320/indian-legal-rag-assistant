@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+import re
 from typing import Any
 
 from legal_ai.utils.text import normalize_whitespace, search_terms, shorten_text
@@ -406,6 +407,13 @@ class WorkspaceBuilder:
             return "education"
         if "service" in case_type or any(token in lowered for token in ("suspension", "disciplinary", "chargesheet", "departmental inquiry", "promotion")):
             return "service"
-        if "information" in case_type or any(token in lowered for token in ("rti", "information commission", "pio", "records", "inspection")):
+        if (
+            "information" in case_type
+            or re.search(r"\brti\b", lowered)
+            or any(
+                token in lowered
+                for token in ("information commission", "pio", "records", "inspection")
+            )
+        ):
             return "information"
         return ""

@@ -149,6 +149,21 @@ def build_question_payload(question: str) -> dict:
     }
 
 
+def deduplicate_sources(items: list[dict], *, is_case: bool) -> list[dict]:
+    unique: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for item in items:
+        if is_case:
+            key = (str(item.get("case_id") or ""), str(item.get("title") or ""))
+        else:
+            key = (str(item.get("title") or ""), str(item.get("section_ref") or ""))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+    return unique
+
+
 def source_heading(item: dict, *, is_case: bool) -> str:
     if is_case:
         return item.get("title") or item.get("case_id") or "Retrieved case"
@@ -162,59 +177,83 @@ def source_heading(item: dict, *, is_case: bool) -> str:
         details.append(str(section))
     if page_start:
         page_text = f"page {page_start}"
-        if page_end and page_end != page_start:
-            page_text += f"-{page_end}"
+        try:
+            start = int(page_start)
+            end = int(page_end) if page_end else start
+            if start < end <= start + 5:
+                page_text += f"-{end}"
+        except (TypeError, ValueError):
+            pass
         details.append(page_text)
     return f"{title} ({', '.join(details)})" if details else title
 
 
-def render_reference(item: dict) -> None:
-    with st.expander(source_heading(item, is_case=False)):
-        metadata = [item.get("authority_type"), item.get("domain")]
-        metadata = [str(value) for value in metadata if value]
-        if metadata:
-            st.caption(" | ".join(metadata))
-        st.write(item.get("excerpt") or "No excerpt was returned.")
+def source_citation(item: dict, *, is_case: bool) -> str:
+    if is_case:
+        return item.get("title") or item.get("case_id") or "Retrieved case"
+    title = item.get("title") or "Reference material"
+    section = item.get("section_ref")
+    return f"{title} - {section}" if section else title
 
 
-def render_case(item: dict) -> None:
-    with st.expander(source_heading(item, is_case=True)):
+def render_evidence_item(item: dict, *, is_case: bool, index: int) -> None:
+    st.markdown(f"**{index}. {source_heading(item, is_case=is_case)}**")
+    if is_case:
         metadata = [item.get("court"), item.get("date"), item.get("case_id")]
-        metadata = [str(value) for value in metadata if value]
-        if metadata:
-            st.caption(" | ".join(metadata))
-        st.write(item.get("excerpt") or item.get("summary") or "No excerpt was returned.")
+        excerpt = item.get("excerpt") or item.get("summary")
+    else:
+        metadata = [item.get("authority_type"), item.get("domain")]
+        excerpt = item.get("excerpt")
+    metadata = [str(value) for value in metadata if value]
+    if metadata:
+        st.caption(" | ".join(metadata))
+    st.write(excerpt or "No excerpt was returned.")
 
 
 def render_sources(response: dict) -> None:
-    references = response.get("reference_materials") or []
-    cases = response.get("supporting_cases") or []
+    references = deduplicate_sources(response.get("reference_materials") or [], is_case=False)
+    cases = deduplicate_sources(response.get("supporting_cases") or [], is_case=True)
     if not references and not cases:
-        st.caption("No source excerpts were returned for this answer.")
         return
 
-    st.markdown("#### Sources")
-    for item in references:
-        render_reference(item)
-    for item in cases:
-        render_case(item)
+    primary = references[0] if references else cases[0]
+    st.caption(f"Source: {source_citation(primary, is_case=not bool(references))}")
+    with st.expander("View retrieved evidence"):
+        evidence = [(item, False) for item in references] + [(item, True) for item in cases]
+        for index, (item, is_case) in enumerate(evidence, start=1):
+            render_evidence_item(item, is_case=is_case, index=index)
+            if index < len(evidence):
+                st.divider()
+
+
+def visible_advisories(response: dict) -> list[str]:
+    if response.get("evidence_strength") not in {"mixed", "insufficient"} and response.get(
+        "retrieval_confidence"
+    ) != "low":
+        return []
+
+    hidden_prefixes = (
+        "This answer relied on",
+        "This answer is statute-first",
+        "Official law materials were used",
+    )
+    visible: list[str] = []
+    for advisory in response.get("advisories") or []:
+        if advisory.startswith(hidden_prefixes) or advisory in visible:
+            continue
+        visible.append(advisory)
+    return visible[:2]
 
 
 def render_answer(response: dict) -> None:
     st.markdown(response.get("answer") or "The backend returned an empty answer.")
     render_sources(response)
 
-    advisories = response.get("advisories") or []
+    advisories = visible_advisories(response)
     if advisories:
-        with st.expander("Limitations and notes"):
+        with st.expander("Limitations"):
             for advisory in advisories:
                 st.markdown(f"- {advisory}")
-
-    suggestions = response.get("follow_up_suggestions") or []
-    if suggestions:
-        st.markdown("**Possible follow-up questions**")
-        for suggestion in suggestions[:3]:
-            st.markdown(f"- {suggestion}")
 
 
 def reset_conversation() -> None:
@@ -232,7 +271,8 @@ for key, default in {
 
 st.title("Indian Legal Research & Retrieval System")
 st.caption(
-    "Ask questions about Indian law and retrieved judgments, or attach one legal document for focused Q&A."
+    "Ask questions about Indian law and retrieved judgments, or attach one legal document for focused Q&A. "
+    "Legal information only, not legal advice."
 )
 
 with st.sidebar:

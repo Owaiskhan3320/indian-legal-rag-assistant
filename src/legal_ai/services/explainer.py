@@ -605,7 +605,9 @@ class ExplanationService:
             )
         if plan == "exact_law_answer":
             return (
-                "Structure the answer like a statute-first legal note: use short headings for Answer, Source used, Why it applies, Next step, and Caution when needed. "
+                "Answer directly in one to three short paragraphs. Use bullets only when the provision naturally contains a list. "
+                "Do not add headings such as Answer, Source used, Why it applies, or Caution. "
+                "Do not repeat citations or a general legal-advice disclaimer; the interface displays those separately. "
                 "For an exact article, section, or rule question, prioritize the official law materials and do not let case-law overshadow the direct provision."
             )
         if response_length == "short" or retrieval_profile == "fast":

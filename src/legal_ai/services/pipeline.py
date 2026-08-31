@@ -286,7 +286,6 @@ class LegalAIPipeline:
                 scope_case_ids=combined_scope_case_ids[:5],
             )
             combined_answer_parts = []
-            combined_sources: list[str] = []
             combined_advisories: list[str] = []
             combined_reference_materials: list[dict[str, Any]] = []
             answer_source = "llm"
@@ -309,9 +308,6 @@ class LegalAIPipeline:
                     include_sources=False,
                 )
                 combined_answer_parts.append(f"{index}. {body}")
-                for case_id in result["scope_case_ids"]:
-                    if case_id not in combined_sources:
-                        combined_sources.append(case_id)
                 for material in result.get("reference_materials") or []:
                     key = (
                         material.get("title"),
@@ -326,14 +322,6 @@ class LegalAIPipeline:
                     if advisory not in combined_advisories:
                         combined_advisories.append(advisory)
             answer_text = "\n\n".join(combined_answer_parts)
-            if combined_sources:
-                answer_text += f"\n\nSources: {', '.join(combined_sources[:5])}"
-            if combined_reference_materials:
-                law_sources = [
-                    self._format_reference_material_label(item)
-                    for item in combined_reference_materials[:3]
-                ]
-                answer_text += f"\n\nLaw sources: {', '.join(law_sources)}"
             response_source_mode = (
                 combined_source_modes[0]
                 if combined_source_modes and len(set(combined_source_modes)) == 1
@@ -831,7 +819,11 @@ class LegalAIPipeline:
             "answer_result": answer_result,
             "advisories": advisories[:5],
             "scope_case_ids": ((shortlisted_case_ids or rag_context["used_case_ids"])[:5] if use_case_corpus else []),
-            "reference_materials": list(law_context.get("materials") or []),
+            "reference_materials": self._select_reference_materials(
+                question=question,
+                question_profile=question_profile_dict,
+                law_context=law_context,
+            ),
             "source_mode": actual_source_mode,
             "retrieval_profile": retrieval_profile,
             "rewritten_question": rewritten_question if rewritten_question != normalize_whitespace(question) else None,
@@ -1898,6 +1890,14 @@ class LegalAIPipeline:
                 f"- The closest retrieved authority `{lead.get('case_id')}` points toward {shorten_text(proposition, 180)}."
             )
 
+        if source_mode in {"reference_law_only", "document_plus_reference_law"}:
+            reason_text = reason or "The retrieved provision did not directly answer the question."
+            return (
+                "I could not retrieve a sufficiently relevant official provision to answer this question reliably. "
+                f"{reason_text}\n\n"
+                "Try asking for a specific article, section, rule, timeline, or remedy."
+            )
+
         def _practical_guardrail() -> str:
             next_step = (
                 "- Narrow the question to one issue, or upload the notice/order so the next step can be anchored in stronger authority."
@@ -2721,7 +2721,7 @@ class LegalAIPipeline:
             advisories.append(
                 "The current evidence is only partially aligned, so the answer should be treated as a starting point rather than a firm conclusion."
             )
-        if evidence_gaps:
+        if evidence_gaps and evidence_strength != "supported":
             advisories.append(evidence_gaps[0])
         if document_used and source_mode == "document_plus_case":
             advisories.append(
@@ -2816,26 +2816,6 @@ class LegalAIPipeline:
         cleaned = self._normalize_qa_answer(answer_text)
         if not cleaned:
             return "I could not produce a grounded answer for this question from the current evidence."
-        source_ids = list(dict.fromkeys(rag_context.get("used_case_ids") or []))
-        law_materials = list(rag_context.get("reference_materials") or [])
-        if not source_ids:
-            source_ids = self._collect_scope_case_ids(authority_map)
-        if include_sources and source_ids:
-            suffix = f"\n\nSources: {', '.join(source_ids[:3])}"
-            if law_materials:
-                law_sources = [self._format_reference_material_label(item) for item in law_materials[:2]]
-                suffix += f"\nLaw sources: {', '.join(law_sources)}"
-            if source_mode in {"document_plus_reference_law", "document_plus_reference_law_plus_case"} and rag_context.get("document_used"):
-                filename = rag_context.get("document_filename") or "uploaded document"
-                suffix += f"\nDocument context: {filename}"
-            return f"{cleaned}{suffix}"
-        if include_sources and law_materials:
-            law_sources = [self._format_reference_material_label(item) for item in law_materials[:3]]
-            suffix = f"\n\nLaw sources: {', '.join(law_sources)}"
-            if source_mode in {"document_plus_reference_law", "document_plus_reference_law_plus_case"} and rag_context.get("document_used"):
-                filename = rag_context.get("document_filename") or "uploaded document"
-                suffix += f"\nDocument context: {filename}"
-            return f"{cleaned}{suffix}"
         if include_sources and source_mode == "document_only" and rag_context.get("document_used"):
             filename = rag_context.get("document_filename") or "uploaded document"
             return f"{cleaned}\n\nSource: {filename}"
@@ -2890,6 +2870,7 @@ class LegalAIPipeline:
             section_ref: str,
             label: str,
             required: bool = True,
+            excerpt_terms: list[str] | None = None,
         ) -> dict[str, Any]:
             return {
                 "id": target_id,
@@ -2897,6 +2878,7 @@ class LegalAIPipeline:
                 "section_ref": section_ref,
                 "label": label,
                 "required": required,
+                "excerpt_terms": excerpt_terms or [],
             }
 
         if "article 21a" in lowered or "right to education" in lowered:
@@ -2942,7 +2924,18 @@ class LegalAIPipeline:
                     label="privacy and surveillance-related legal material",
                     required=False,
                 )
-        if domain == "information" or "rti" in lowered:
+        if domain == "information" or re.search(r"\brti\b", lowered):
+            if any(
+                marker in lowered
+                for marker in ("basic purpose", "purpose of", "object of", "aim of", "why was")
+            ):
+                return payload(
+                    target_id="rti_purpose",
+                    title_aliases=["right to information act", "rti act"],
+                    section_ref="",
+                    label="Right to Information Act, 2005",
+                    excerpt_terms=["transparency", "accountability"],
+                )
             no_response = any(
                 marker in lowered
                 for marker in ("not answered", "no response", "no reply", "not received", "not replied", "within 30 days")
@@ -3048,12 +3041,19 @@ class LegalAIPipeline:
             return {"required": False, "matched": bool(materials), "target": None}
         target_ref = cls._normalize_ref_label(target.get("section_ref"))
         aliases = [normalize_whitespace(alias).lower() for alias in target.get("title_aliases") or []]
+        excerpt_terms = [
+            normalize_whitespace(term).lower()
+            for term in target.get("excerpt_terms") or []
+            if normalize_whitespace(term)
+        ]
         for material in materials[:3]:
             title_norm = normalize_whitespace(material.get("title") or "").lower()
             ref_norm = cls._normalize_ref_label(material.get("section_ref"))
+            excerpt_norm = normalize_whitespace(material.get("excerpt") or "").lower()
             title_match = not aliases or any(alias == title_norm or alias in title_norm for alias in aliases)
             ref_match = not target_ref or target_ref == ref_norm
-            if title_match and ref_match:
+            excerpt_match = not excerpt_terms or all(term in excerpt_norm for term in excerpt_terms)
+            if title_match and ref_match and excerpt_match:
                 return {"required": bool(target.get("required")), "matched": True, "target": target, "material": material}
         return {"required": bool(target.get("required")), "matched": False, "target": target}
 
@@ -3089,16 +3089,18 @@ class LegalAIPipeline:
         )
         target = validation.get("target") or {}
         target_id = str(target.get("id") or "")
-        lead = materials[0] if materials else {}
+        lead = validation.get("material") or (materials[0] if materials else {})
         lead_label = cls._format_reference_material_label(lead) if lead else "official law material"
-        similar_case_ids = [item.get("case_id") for item in similar_cases[:2] if item.get("case_id")]
-        case_tail = (
-            "\n\nRelated cases: " + ", ".join(similar_case_ids)
-            if similar_case_ids
-            else ""
-        )
 
         templates = {
+            "rti_purpose": (
+                "#### Answer\n"
+                "- The Right to Information Act, 2005 gives citizens a practical right to access information held by public authorities. Its broader purpose is to promote transparency and accountability in government while balancing disclosure against the exemptions provided by the Act.\n\n"
+                "#### Source used\n"
+                f"- {lead_label}.\n\n"
+                "#### Why it applies\n"
+                "- The Act's opening purpose language directly addresses why the RTI framework was enacted."
+            ),
             "constitution_article_21": (
                 "#### Answer\n"
                 "- Article 21 protects life and personal liberty. No person can be deprived of life or personal liberty except according to procedure established by law.\n\n"
@@ -3247,27 +3249,48 @@ class LegalAIPipeline:
             ),
         }
         if target_id in templates:
-            return templates[target_id] + case_tail
+            return cls._conversationalize_reference_answer(templates[target_id])
 
         excerpt = normalize_whitespace(str(lead.get("excerpt") or ""))
-        if not excerpt:
+        if target_id == "generic_exact_provision" and validation.get("matched") and excerpt:
             return (
-                "#### Answer\n"
-                "- I could not extract a reliable statute-first answer from the current official law materials.\n\n"
-                "#### Limits\n"
-                "- Please narrow the question to a specific article, section, rule, timeline, or remedy."
+                f"The retrieved wording for {lead_label} is:\n\n"
+                f"{shorten_text(excerpt, 360)}"
             )
         return (
-            "#### Answer\n"
-            f"- The closest official-law source retrieved for this question is {lead_label}.\n\n"
-            "#### Source used\n"
-            f"- {shorten_text(excerpt, 360)}\n\n"
-            "#### Why it applies\n"
-            "- The system selected this because it was the strongest match in the reference-law lane.\n\n"
-            "#### Caution\n"
-            "- Treat this as a starting point unless the retrieved Act, Article, Section, or Rule exactly matches the legal issue."
-            + case_tail
+            "I could not retrieve a sufficiently relevant official provision to answer this question reliably. "
+            "Try asking for a specific article, section, rule, timeline, or remedy."
         )
+
+    @staticmethod
+    def _conversationalize_reference_answer(answer_text: str) -> str:
+        parts = re.split(r"(?m)^####\s+(.+?)\s*$", (answer_text or "").strip())
+        if len(parts) == 1:
+            return normalize_whitespace(answer_text)
+
+        paragraphs: list[str] = []
+        for index in range(1, len(parts), 2):
+            heading = normalize_whitespace(parts[index]).lower()
+            body_lines = [
+                re.sub(r"^-\s*", "", line.strip())
+                for line in parts[index + 1].splitlines()
+                if line.strip()
+            ]
+            body = normalize_whitespace(" ".join(body_lines))
+            if not body:
+                continue
+            if heading in {"answer", "bottom line"}:
+                paragraphs.append(body)
+            elif heading in {"source used", "why it applies", "why"}:
+                continue
+            elif heading in {"next step", "best next step"}:
+                paragraphs.append(f"**Practical next step:** {body}")
+            elif heading in {"caution", "limits"}:
+                if "legal information, not legal advice" not in body.lower():
+                    paragraphs.append(f"**Note:** {body}")
+            else:
+                paragraphs.append(f"**{parts[index]}:** {body}")
+        return "\n\n".join(paragraphs).strip()
 
     @staticmethod
     def _should_use_reference_law(
@@ -3321,6 +3344,28 @@ class LegalAIPipeline:
         if section_ref:
             return f"{title} - {section_ref}"
         return title
+
+    @classmethod
+    def _select_reference_materials(
+        cls,
+        *,
+        question: str,
+        question_profile: dict[str, Any] | None,
+        law_context: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        materials = list(law_context.get("materials") or [])
+        validation = cls._validate_reference_law_support(
+            question=question,
+            question_profile=question_profile,
+            law_context=law_context,
+        )
+        target = validation.get("target")
+        matched_material = validation.get("material")
+        if target and matched_material:
+            return [matched_material]
+        if target and validation.get("required"):
+            return []
+        return materials[:3]
 
     @staticmethod
     def _as_reference_materials(materials: list[dict[str, Any]]) -> list[ReferenceMaterial]:
